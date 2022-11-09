@@ -36,7 +36,15 @@ async function run() {
 
         // reviews
         app.get('/reviews', async(req, res) => {
-            const query = {};
+            let query = {};
+
+            const userEmail = req.query.email;
+            
+            if(userEmail){
+                query = {
+                    email: userEmail
+                }
+            }
             const cursor = reviewsCollection.find(query);
             const reviews = await cursor.toArray();
             res.send(reviews)
@@ -45,6 +53,14 @@ async function run() {
         app.post('/reviews', async(req, res) => {
             const reviews = req.body;
             const result = await reviewsCollection.insertOne(reviews);
+            res.send(result);
+        })
+
+        // reviews delete
+        app.delete('/reviews/:id', async(req, res) => {
+            const id = req.params.id;
+            const query = {_id: ObjectId(id)};
+            const result = await reviewsCollection.deleteOne(query);
             res.send(result);
         })
     }
