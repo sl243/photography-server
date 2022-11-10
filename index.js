@@ -1,5 +1,6 @@
 const express = require('express')
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const app = express()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
@@ -15,15 +16,28 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@clu
 
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+function verifyJWT(req, res, next){
+    const authHeader = req.headers.authorization;
+    if(!authHeader){
+        res.status(401).send({message: 'unauthorized access'})
+    }
+}
 async function run() {
     try{
         const servicesCollection = client.db('photography').collection('services');
         const reviewsCollection = client.db('photography').collection('reviews');
 
+        // jwt token
+        app.post('/jwt', (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'})
+            res.send({token})
+        })
+
         app.get('/services', async(req, res) => {
             const query = {};
             const cursor = servicesCollection.find(query);
-            const services = await cursor.toArray();
+            const services = await cursor.limit(3).toArray();
             res.send(services)
         })
 
@@ -32,6 +46,13 @@ async function run() {
             const query = {_id: ObjectId(id)};
             const service = await servicesCollection.findOne(query);
             res.send(service)
+        })
+
+        // service add
+        app.post('/services', async(req, res) => {
+            const services = req.body;
+            const result = await servicesCollection.insertOne(services);
+            res.send(result)
         })
 
         // reviews
