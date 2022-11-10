@@ -21,6 +21,14 @@ function verifyJWT(req, res, next){
     if(!authHeader){
         res.status(401).send({message: 'unauthorized access'})
     }
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(error, decoded) {
+        if(error) {
+            res.status(401).send({message: 'unauthorized Access'})
+        }
+        req.decoded = decoded;
+        next();
+    })
 }
 async function run() {
     try{
@@ -37,7 +45,7 @@ async function run() {
         app.get('/services', async(req, res) => {
             const query = {};
             const cursor = servicesCollection.find(query);
-            const services = await cursor.limit(3).toArray();
+            const services = await cursor.toArray();
             res.send(services)
         })
 
@@ -56,7 +64,11 @@ async function run() {
         })
 
         // reviews
-        app.get('/reviews', async(req, res) => {
+        app.get('/reviews',verifyJWT, async(req, res) => {
+            const decoded = req.decoded;
+            if(decoded.email !== req.query.email){
+                res.status(403).send({message: 'Forbidden access'})
+            }
             let query = {};
 
             const userEmail = req.query.email;
@@ -85,7 +97,7 @@ async function run() {
         })
 
         // update review
-        app.put('/reviews/:id', async(req, res) => {
+        app.put('/reviews/:id',verifyJWT, async(req, res) => {
             const id = req.params.id;
             const filter = {_id: ObjectId(id)};
             const review = req.body;
